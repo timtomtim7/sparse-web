@@ -1,11 +1,14 @@
 package blue.sparse.script
 
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.sun.javafx.util.Utils.clamp
 import kotlinx.html.HTML
 import kotlinx.html.html
 import kotlinx.html.stream.appendHTML
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
+import kotlin.reflect.full.memberProperties
 import kotlin.script.templates.ScriptTemplateDefinition
 
 @ScriptTemplateDefinition
@@ -50,15 +53,25 @@ abstract class WebScriptTemplate(
 		response.writer.appendHTML().html(block)
 	}
 
+	inline fun <reified T: Any> json(value: T) {
+		response.contentType = "application/json"
+		Gson().toJson(value, object : TypeToken<T>() {}.type, response.writer)
+	}
+
+//	inline fun <reified T> xml(value: T, tagName: String = "xml") {
+//		response.contentType = "application/xml"
+//		val json = Gson().toJson(value, object : TypeToken<T>() {}.type)
+//		response.outputStream.print(XML.toString(JSONObject(json), tagName))
+//	}
+
 	fun error(code: Int = 403): Nothing {
 		throw Error(code)
 	}
 
 	class Error(val code: Int) : Throwable()
 
-	//xml
-	//json
-	//html
-	//image
+	//json  DONE
+	//html  DONE
 	//style
+	//image
 }

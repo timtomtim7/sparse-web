@@ -1,7 +1,6 @@
 package blue.sparse.web
 
-import blue.sparse.script.DynamicClassManager
-import blue.sparse.script.ScriptManager
+import blue.sparse.script.*
 import java.io.File
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
@@ -11,17 +10,42 @@ object SparseWeb {
 	val scriptManager = ScriptManager()
 	val server = WebServer()
 
+	private var lastContextUpdate = 0L
+
 	init {
+		File("run/temp").apply {
+			deleteRecursively()
+			mkdirs()
+		}
 		recompileNonScripts()
 	}
 
-	fun recompileNonScripts() {
-		val compiled = dynamic.compileAll(File("run/src"))
-		scriptManager.parentClassLoader = compiled
-		scriptManager.addClassPathFile(compiled.jar)
+	internal fun updateContexts() {
+		val file = File("run/context.kts")
+		if(!file.exists())
+			return
+
+		if(lastContextUpdate >= file.lastModified())
+			return
+
+		val script = scriptManager[file, ContextTemplate::class]
+		val constructor = script.clazz.constructors.first()
+		constructor.newInstance()
+		lastContextUpdate = System.currentTimeMillis()
 	}
 
-	fun scriptRequest(
+	private fun recompileNonScripts() {
+		val compiled = dynamic.compileAll(
+				File("run/src")
+		)
+		scriptManager.clearClassPath()
+		scriptManager.parentClassLoader = compiled
+		if(compiled != null) {
+			scriptManager.addClassPathFile(compiled.jar)
+		}
+	}
+
+	internal fun scriptRequest(
 			file: File,
 			request: HttpServletRequest,
 			response: HttpServletResponse,
@@ -42,16 +66,4 @@ object SparseWeb {
 
 fun main(args: Array<String>) {
 	SparseWeb.start()
-
-
-//	for(i in 1..10) {
-//		val ms = measureTimeMillis {
-//			val dcl = DynamicClassManager.compileAll(File("run/src"))
-//			val scriptManager = ScriptManager(dcl)
-//			scriptManager.addClassPathFile(dcl.jar)
-//			scriptManager.get()
-//		}
-//		println("Took ${ms}ms")
-//	}
-
 }

@@ -1,7 +1,6 @@
 package blue.sparse.script
 
 import blue.sparse.util.DirectoryWatchThread
-import blue.sparse.web.SparseWeb
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 import java.io.File
 import java.net.URLClassLoader
@@ -13,7 +12,7 @@ object DynamicClassManager {
 
 	init {
 		DirectoryWatchThread(File("run/src/")) {
-			if(it.extension == "kt")
+			if (it.extension == "kt")
 				filesChanged = true
 		}
 	}
@@ -21,28 +20,37 @@ object DynamicClassManager {
 	fun getSourceFiles(folder: File): List<File> {
 		return folder
 				.walkTopDown()
-				.filter { !it.isDirectory && it.extension == "kt" }
+				.filter {
+					!it.isDirectory
+							&& it.extension == "kt"
+							&& it.nameWithoutExtension != "DSL"
+				}
 				.toList()
 	}
 
 	fun compileAll(
 			sourceFolder: File,
-			target: File = File.createTempFile(
-					"sparse-web", ".jar", File("run/temp")
-			)
-	): DynamicClassLoader {
+			target: File? = null
+	): DynamicClassLoader? {
+		val realTarget = target ?: File.createTempFile(
+				"sparse-web", ".jar", File("run/temp")
+		)
+		realTarget.absoluteFile.parentFile.mkdirs()
+
 		filesChanged = false
 
 		val files = getSourceFiles(sourceFolder)
+		if (files.isEmpty())
+			return null
 		compiler.exec(System.err,
 				"-kotlin-home", "F:/install/kotlinc",
-				"-d", target.absolutePath,
+				"-d", realTarget.absolutePath,
 				*files.map(File::getAbsolutePath).toTypedArray()
 		)
-		target.deleteOnExit()
+		realTarget.deleteOnExit()
 
-		return DynamicClassLoader(target)
+		return DynamicClassLoader(realTarget)
 	}
 
-	class DynamicClassLoader(val jar: File): URLClassLoader(arrayOf(jar.toURI().toURL()))
+	class DynamicClassLoader(val jar: File) : URLClassLoader(arrayOf(jar.toURI().toURL()))
 }
