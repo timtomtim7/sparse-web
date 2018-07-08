@@ -43,7 +43,7 @@ object DynamicClassManager {
 		if (files.isEmpty())
 			return null
 		compiler.exec(System.err,
-				"-kotlin-home", "F:/install/kotlinc",
+				"-kotlin-home", System.getProperty("KOTLIN_HOME"),
 				"-d", realTarget.absolutePath,
 				*files.map(File::getAbsolutePath).toTypedArray()
 		)
